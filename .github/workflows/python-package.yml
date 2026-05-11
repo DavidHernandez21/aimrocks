@@ -22,7 +22,7 @@ jobs:
           python -m pip install twine
 
       - name: Download all the wheels
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v8
 
       - name: Publish wheels
         env:
