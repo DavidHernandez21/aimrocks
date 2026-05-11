@@ -9,9 +9,9 @@ mkdir -p lib
 mkdir -p include
 
 # Installing CMake
-/opt/python/cp37-cp37m/bin/python -m pip install cmake
-ln -s /opt/python/cp37-cp37m/bin/cmake /usr/bin/cmake
-PATH=/opt/python/cp37-cp37m/bin:$PATH
+/opt/python/cp312-cp312/bin/python -m pip install cmake
+ln -s /opt/python/cp312-cp312/bin/cmake /usr/bin/cmake
+PATH=/opt/python/cp312-cp312/bin:$PATH
 
 # Building third party dependencies
 /opt/aimrocks/docker/build-zlib.sh

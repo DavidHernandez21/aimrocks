@@ -50,6 +50,18 @@ ctypedef const filter_policy.FilterPolicy ConstFilterPolicy
 cdef extern from "rdb_include/utils.hpp" namespace "py_rocks":
     cdef const Slice* vector_data(vector[Slice]&)
 
+cdef extern from "rdb_include/options_compat.hpp" namespace "py_rocks":
+    void set_hash_index_allow_collision(table_factory.BlockBasedTableOptions& opts, bint v) nogil except+
+    void set_block_cache_compressed(table_factory.BlockBasedTableOptions& opts, shared_ptr[cache.Cache] cache) nogil except+
+    void set_max_mem_compaction_level(options.ColumnFamilyOptions& cops, int v) nogil except+
+    int get_max_mem_compaction_level(const options.ColumnFamilyOptions& cops) nogil except+
+
+cdef extern from "rdb_include/options_compat.hpp":
+    void set_hash_index_allow_collision(table_factory.BlockBasedTableOptions& opts, bint v) nogil except+
+    void set_block_cache_compressed(table_factory.BlockBasedTableOptions& opts, shared_ptr[cache.Cache] cache) nogil except+
+    void set_max_mem_compaction_level(options.ColumnFamilyOptions& cops, int v) nogil except+
+    int get_max_mem_compaction_level(const options.ColumnFamilyOptions& cops) nogil except+
+
 cdef extern from "Python.h":
     void PyEval_InitThreads()
 

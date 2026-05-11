@@ -8,7 +8,7 @@ jobs:
       - linux-dist-aarch64
       - linux-dist-x86_64
       - macos-dist
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     name: Uploading wheels
     steps:
       - name: Setup python
@@ -22,13 +22,7 @@ jobs:
           python -m pip install twine
           
       - name: Download all the wheels
-        uses: actions/download-artifact@v4
-        with:
-          merge-multiple: true
-          path: artifact
-      
-      - name: Display structure of downloaded files
-        run: ls -R
+        uses: actions/download-artifact@v3
           
       - name: Publish wheels
         env:
@@ -41,63 +35,54 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        manylinux-version:
-          - {image: 'manylinux_2_28_aarch64', tag: '2024-04-23-ef7507e'}
-          - {image: 'manylinux2014_aarch64', tag: '2024-03-25-9206bd9'}
-          - {image: 'manylinux_2_24_aarch64', tag: 'latest'}
-    name: ${{ matrix.manylinux-version.image }} using Docker on M1 Mac
+        manylinux-version: [ 'manylinux_2_28_aarch64', 'manylinux2014_aarch64', 'manylinux_2_24_aarch64' ]
+    name: ${{ matrix.manylinux-version }} using Docker on M1 Mac
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v5
+        uses: actions/checkout@v2
 
       - name: Pull Docker Images
         run: |
-         docker pull quay.io/pypa/${{ matrix.manylinux-version.image }}:${{ matrix.manylinux-version.tag }}
+         docker pull quay.io/pypa/${{ matrix.manylinux-version }}
 
-      - name: Building dependencies for ${{ matrix.manylinux-version.image }}
+      - name: Building dependencies for ${{ matrix.manylinux-version }}
         run: |
          docker build \
-         --build-arg FROM=quay.io/pypa/${{ matrix.manylinux-version.image }}:${{ matrix.manylinux-version.tag }} \
+         --build-arg FROM=quay.io/pypa/${{ matrix.manylinux-version }} \
          --target deps .
 
-      - name: Building rocksdb for ${{ matrix.manylinux-version.image }}
+      - name: Building rocksdb for ${{ matrix.manylinux-version }}
         run: |
          docker build \
-         --build-arg FROM=quay.io/pypa/${{ matrix.manylinux-version.image }}:${{ matrix.manylinux-version.tag }} \
+         --build-arg FROM=quay.io/pypa/${{ matrix.manylinux-version }} \
          --target rocksdb .
 
-      - name: Building wheels for ${{ matrix.manylinux-version.image }}
+      - name: Building wheels for ${{ matrix.manylinux-version }}
         run: |
          docker build \
-         --build-arg FROM=quay.io/pypa/${{ matrix.manylinux-version.image }}:${{ matrix.manylinux-version.tag }} \
+         --build-arg FROM=quay.io/pypa/${{ matrix.manylinux-version }} \
          --target wheels . \
-         -t aimhubio/aimrocks:${{ matrix.manylinux-version.image }}
+         -t aimhubio/aimrocks:${{ matrix.manylinux-version }}
 
-      - name: Auditing wheels for ${{ matrix.manylinux-version.image }}
+      - name: Auditing wheels for ${{ matrix.manylinux-version }}
         run: |
          mkdir -p manylinux_dist/ && \
          docker run --rm \
          --mount type=bind,source=$PWD/manylinux_dist,target=/opt/aimrocks/manylinux_dist \
-         aimhubio/aimrocks:${{ matrix.manylinux-version.image }} \
+         aimhubio/aimrocks:${{ matrix.manylinux-version }} \
          bash -e /opt/aimrocks/docker/audit-wheels.sh
          
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v3
         with:
           path: manylinux_dist/*.whl
-          name: artifact-${{ matrix.manylinux-version.image }}
-          if-no-files-found: error
           
   linux-dist-x86_64:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        manylinux-version:
-          - {image: 'manylinux1_x86_64', tag: 'latest'} 
-          - {image: 'manylinux2010_x86_64', tag: 'latest'}
-          - {image: 'manylinux2014_x86_64', tag: '2024-04-23-ef7507e'}
-          - {image: 'manylinux_2_24_x86_64', tag: 'latest'}
-    name: ${{ matrix.manylinux-version.image }}
+        manylinux-version: [ 'manylinux1_x86_64', 'manylinux2010_x86_64', 'manylinux2014_x86_64', 'manylinux_2_24_x86_64' ]
+    name: ${{ matrix.manylinux-version }}
     steps:
       - name: Install Docker & images
         run: |
@@ -105,7 +90,7 @@ jobs:
           sudo systemctl enable --now docker
 
       - name: Checkout sources
-        uses: actions/checkout@v5
+        uses: actions/checkout@v2
 
       - name: Setup python
         uses: actions/setup-python@v2
@@ -115,53 +100,51 @@ jobs:
 
       - name: Pull Docker Images
         run: |
-         docker pull quay.io/pypa/${{ matrix.manylinux-version.image }}:${{ matrix.manylinux-version.tag }}
+         docker pull quay.io/pypa/${{ matrix.manylinux-version }}
 
       - uses: satackey/action-docker-layer-caching@v0.0.11
         # Ignore the failure of a step and avoid terminating the job.
         continue-on-error: true
         with:
-          key: aimrocks-cython-manylinux-build-${{ matrix.manylinux-version.image }}-{hash}
+          key: aimrocks-cython-manylinux-build-${{ matrix.manylinux-version }}-{hash}
           restore-keys: |
-            aimrocks-cython-manylinux-build-${{ matrix.manylinux-version.image }}-
+            aimrocks-cython-manylinux-build-${{ matrix.manylinux-version }}-
 
-      - name: Building dependencies for ${{ matrix.manylinux-version.image }}
+      - name: Building dependencies for ${{ matrix.manylinux-version }}
         run: |
          docker build \
-         --build-arg FROM=quay.io/pypa/${{ matrix.manylinux-version.image }}:${{ matrix.manylinux-version.tag }} \
+         --build-arg FROM=quay.io/pypa/${{ matrix.manylinux-version }} \
          --target deps .
 
-      - name: Building rocksdb for ${{ matrix.manylinux-version.image }}
+      - name: Building rocksdb for ${{ matrix.manylinux-version }}
         run: |
          docker build \
-         --build-arg FROM=quay.io/pypa/${{ matrix.manylinux-version.image }}:${{ matrix.manylinux-version.tag }} \
+         --build-arg FROM=quay.io/pypa/${{ matrix.manylinux-version }} \
          --target rocksdb .
 
-      - name: Building wheels for ${{ matrix.manylinux-version.image }}
+      - name: Building wheels for ${{ matrix.manylinux-version }}
         run: |
          docker build \
-         --build-arg FROM=quay.io/pypa/${{ matrix.manylinux-version.image }}:${{ matrix.manylinux-version.tag }} \
+         --build-arg FROM=quay.io/pypa/${{ matrix.manylinux-version }} \
          --target wheels . \
-         -t aimhubio/aimrocks:${{ matrix.manylinux-version.image }}
+         -t aimhubio/aimrocks:${{ matrix.manylinux-version }}
 
-      - name: Auditing wheels for ${{ matrix.manylinux-version.image }}
+      - name: Auditing wheels for ${{ matrix.manylinux-version }}
         run: |
          mkdir -p manylinux_dist/ && \
          docker run --rm \
          --mount type=bind,source=$PWD/manylinux_dist,target=/opt/aimrocks/manylinux_dist \
-         aimhubio/aimrocks:${{ matrix.manylinux-version.image }} \
+         aimhubio/aimrocks:${{ matrix.manylinux-version }} \
          bash -e /opt/aimrocks/docker/audit-wheels.sh
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v3
         with:
           path: manylinux_dist/*.whl
-          name: artifact-${{ matrix.manylinux-version.image }}
-          if-no-files-found: error
 
   macos-deps:
     runs-on: m1
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         arch: ['arm64', 'x86_64']
     name: Preparing dependencies for ${{ matrix.arch }} Mac build
@@ -176,7 +159,7 @@ jobs:
           rm -rf $AIM_DEP_DIR/*
 
       - name: Checkout sources
-        uses: actions/checkout@v5
+        uses: actions/checkout@v2
 
       - name: Building ZLib
         run: |
@@ -209,9 +192,9 @@ jobs:
     runs-on: m1
     needs: macos-deps
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
-        python-version: [ '3.6', '3.7', '3.8', '3.9', '3.10' , '3.11', '3.12', '3.13']
+        python-version: [ '3.6', '3.7', '3.8', '3.9', '3.10' , '3.11', '3.12']
         arch: ['arm64', 'x86_64']
         exclude:
           - arch: 'arm64'
@@ -229,8 +212,6 @@ jobs:
         run: |
           arch -${{matrix.arch}} $PYTHON -m build
           
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v3
         with:
           path: dist/*.whl
-          name: artifact-mac-${{ matrix.arch }}-py${{ matrix.python-version }}
-          if-no-files-found: error

@@ -39,7 +39,6 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         kLZ4HCCompression
         kXpressCompression
         kZSTD
-        kZSTDNotFinalCompression
         kDisableCompressionOption
 
     ctypedef enum ReadTier:

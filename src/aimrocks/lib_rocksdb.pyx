@@ -235,6 +235,8 @@ cdef class PyGenericFilterPolicy(PyFilterPolicy):
                 <void*>ob,
                 create_filter_callback,
                 key_may_match_callback))
+        # Register wrapper in C++ registry so shim can detect it without RTTI
+        self.policy.get().register_self()
 
     cdef object get_ob(self):
         return self.ob
@@ -297,17 +299,13 @@ cdef class PyBloomFilterPolicy(PyFilterPolicy):
         for key in keys:
             c_keys.push_back(bytes_to_slice(key))
 
-        self.policy.get().CreateFilter(
-            vector_data(c_keys),
-            <int>c_keys.size(),
-            cython.address(dst))
+        # Use shim to support newer RocksDB filter-bits API
+        filter_policy.CreateFilterShim(self.policy.get(), vector_data(c_keys), <int>c_keys.size(), cython.address(dst))
 
         return string_to_bytes(dst)
 
     cpdef key_may_match(self, key, filter_):
-        return self.policy.get().KeyMayMatch(
-            bytes_to_slice(key),
-            bytes_to_slice(filter_))
+        return filter_policy.KeyMayMatchShim(self.policy.get(), bytes_to_slice(key), bytes_to_slice(filter_))
 
     cdef object get_ob(self):
         return self
@@ -600,10 +598,8 @@ cdef class BlockBasedTableFactory(PyTableFactory):
         else:
             raise ValueError("Unknown index_type: %s" % index_type)
 
-        if hash_index_allow_collision:
-            table_options.hash_index_allow_collision = True
-        else:
-            table_options.hash_index_allow_collision = False
+        # Set hash_index_allow_collision via compatibility helper
+        set_hash_index_allow_collision(table_options, hash_index_allow_collision)
 
         if checksum == 'crc32':
             table_options.checksum = table_factory.kCRC32c
@@ -637,7 +633,7 @@ cdef class BlockBasedTableFactory(PyTableFactory):
             table_options.block_cache = block_cache.get_cache()
 
         if block_cache_compressed is not None:
-            table_options.block_cache_compressed = block_cache_compressed.get_cache()
+            set_block_cache_compressed(table_options, block_cache_compressed.get_cache())
 
         # Set the filter_policy
         self.py_filter_policy = None
@@ -962,12 +958,10 @@ cdef class ColumnFamilyOptions(object):
                 return CompressionType.xpress_compression
             elif self.copts.compression == options.kZSTD:
                 return CompressionType.zstd_compression
-            elif self.copts.compression == options.kZSTDNotFinalCompression:
-                return CompressionType.zstdnotfinal_compression
             elif self.copts.compression == options.kDisableCompressionOption:
                 return CompressionType.disable_compression
             else:
-                raise Exception("Unknonw type: %s" % self.opts.compression)
+                raise Exception("Unknown compression type: %s" % self.copts.compression)
 
         def __set__(self, value):
             if value == CompressionType.no_compression:
@@ -985,7 +979,8 @@ cdef class ColumnFamilyOptions(object):
             elif value == CompressionType.zstd_compression:
                 self.copts.compression = options.kZSTD
             elif value == CompressionType.zstdnotfinal_compression:
-                self.copts.compression = options.kZSTDNotFinalCompression
+                # Backward compatibility: treat as zstd_compression
+                self.copts.compression = options.kZSTD
             elif value == CompressionType.disable_compression:
                 self.copts.compression = options.kDisableCompressionOption
             else:
@@ -1023,9 +1018,9 @@ cdef class ColumnFamilyOptions(object):
 
     property max_mem_compaction_level:
         def __get__(self):
-            return self.copts.max_mem_compaction_level
+            return get_max_mem_compaction_level(deref(self.copts))
         def __set__(self, value):
-            self.copts.max_mem_compaction_level = value
+            set_max_mem_compaction_level(deref(self.copts), value)
 
     property target_file_size_base:
         def __get__(self):
