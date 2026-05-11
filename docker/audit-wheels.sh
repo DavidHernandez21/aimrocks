@@ -11,7 +11,7 @@ LIBS_BUNDLED=`ls ${AIM_DEP_DIR}/lib/ \
 | paste -s -d','`
 export LD_LIBRARY_PATH=$AIM_DEP_DIR/lib:$LD_LIBRARY_PATH
 
-INTERNAL_PYTHON=/opt/python/cp38-cp38/bin/python
+INTERNAL_PYTHON=/opt/python/cp312-cp312/bin/python
 
 cd /opt/aimrocks
 

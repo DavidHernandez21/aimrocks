@@ -1,11 +1,11 @@
-ARG FROM=ubuntu
+ARG FROM=quay.io/pypa/manylinux_2_34_x86_64:latest
 
 FROM ${FROM} AS deps
 
 RUN mkdir -p /opt/aimrocks_deps/lib /opt/aimrocks_deps/include
 ENV AIM_DEP_DIR=/opt/aimrocks_deps
-RUN /opt/python/cp37-cp37m/bin/python -m pip install 'cmake<3.23' && \
-    ln -s /opt/python/cp37-cp37m/bin/cmake /usr/bin/cmake
+RUN /opt/python/cp312-cp312/bin/python -m pip install 'cmake<3.23' && \
+    ln -s /opt/python/cp312-cp312/bin/cmake /usr/bin/cmake
 WORKDIR /opt/aimrocks_deps/
 
 

@@ -35,5 +35,9 @@ cdef extern from "rdb_include/filter_policy_wrapper.hpp" namespace "py_rocks":
             void*,
             create_filter_func,
             key_may_match_func) nogil except+
-
         void set_info_log(shared_ptr[Logger]) nogil except+
+        void register_self() nogil except+
+
+cdef extern from "rdb_include/filter_policy_shim.hpp" namespace "py_rocks":
+    void CreateFilterShim(const FilterPolicy* policy, const Slice* keys, int n, string* dst) nogil except+
+    cpp_bool KeyMayMatchShim(const FilterPolicy* policy, const Slice& key, const Slice& filter) nogil except+
